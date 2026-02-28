@@ -127,12 +127,119 @@ Mark Hamilton`)
           onChange={setCompanyJobInfo}
         />
 
-        <TextInput
-          label="Applicant background / resume"
-          placeholder="Paste your resume, skills, experience, achievements, tools..."
-          value={applicantBackground}
-          onChange={setApplicantBackground}
-        />
+        <div className="relative">
+          <TextInput
+            label="Applicant background / resume"
+            placeholder="Paste your resume, skills, experience, achievements, tools..."
+            value={applicantBackground}
+            onChange={setApplicantBackground}
+          />
+          <label className="absolute top-0 right-0 text-[12px] text-[#5faf3b] cursor-pointer hover:underline font-medium">
+            Upload CV
+            <input
+              type="file"
+              accept=".pdf,.docx,.doc,.txt,.md"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+
+                try {
+                  let extractedText = ''
+                  const fileName = file.name.toLowerCase()
+                  console.log('Uploading file:', fileName)
+
+                  if (fileName.endsWith('.pdf')) {
+                    // Extract text from PDF client-side
+                    try {
+                      // Dynamic import to avoid SSR issues
+                      const pdfjs = await import('pdfjs-dist')
+                      
+                      // Use same version worker from unpkg
+                      pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs'
+                    
+                      const arrayBuffer = await file.arrayBuffer()
+                      const uint8Array = new Uint8Array(arrayBuffer)
+                      
+                      const pdf = await pdfjs.getDocument({ data: uint8Array }).promise
+                      
+                      let fullText = ''
+                      for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i)
+                        const textContent = await page.getTextContent()
+                        
+                        // Get items with position info for better formatting
+                        const items = textContent.items as any[]
+                        
+                        let lastY: number | null = null
+                        let lastX: number | null = null
+                        
+                        for (const item of items) {
+                          const text = item.str
+                          if (!text.trim()) continue
+                          
+                          const y = item.transform[5] // Y position
+                          const x = item.transform[4] // X position
+                          
+                          // Detect new line based on Y position change
+                          if (lastY !== null && Math.abs(y - lastY) > 5) {
+                            // Different line
+                            if (lastX !== null && x > lastX + 50) {
+                              // Indented text (likely new section) - add extra newline
+                              fullText += '\n\n'
+                            } else {
+                              fullText += '\n'
+                            }
+                          } else if (lastX !== null && x > lastX + 100) {
+                            // Large gap on same line - add extra space
+                            fullText += '  '
+                          }
+                          
+                          fullText += text
+                          lastY = y
+                          lastX = x + item.width
+                        }
+                        fullText += '\n\n'
+                      }
+                      extractedText = fullText.trim()
+                    } catch (pdfError) {
+                      console.error('PDF extraction error:', pdfError)
+                      return
+                    }
+                  } else if (fileName.endsWith('.docx')) {
+                    // Use server-side for DOCX
+                    const formData = new FormData()
+                    formData.append('file', file)
+                    const response = await fetch('/api/extract-cv', {
+                      method: 'POST',
+                      body: formData,
+                    })
+                    if (!response.ok) {
+                      return
+                    }
+                    const data = await response.json()
+                    extractedText = data.text
+                  } else if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+                    // Plain text
+                    extractedText = await file.text()
+                  } else {
+                    return
+                  }
+
+                  if (!extractedText || extractedText.trim().length === 0) {
+                    return
+                  }
+
+                  setApplicantBackground((prev) => {
+                    return prev ? `${prev}\n\n${extractedText}` : extractedText
+                  })
+                } catch (error) {
+                  console.error('Upload error:', error)
+                }
+              }}
+            />
+          </label>
+        </div>
 
         <TextInput
           label="Previous cover letter (style reference)"
