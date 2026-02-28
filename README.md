@@ -215,4 +215,4 @@ The original Python/Flask implementation is archived in the `_old/` directory fo
 
 ## License
 
-MIT © 2026 Jonas Bergman
+MIT © 2026 L.J Bergman
