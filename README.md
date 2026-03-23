@@ -102,7 +102,7 @@ lettertune-next/
 ### 1. Clone
 
 ```bash
-git clone https://github.com/osgar-developer/lettertune-next.git
+git clone https://github.com/jonas-developer/lettertune-next.git
 cd lettertune-next
 ```
 
@@ -204,12 +204,6 @@ Start command:
 ```bash
 npm start
 ```
-
----
-
-## Legacy Implementation
-
-The original Python/Flask implementation is archived in the `_old/` directory for reference.
 
 ---
 
